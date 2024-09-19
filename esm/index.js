@@ -1,16 +1,16 @@
-"use strict";Object.defineProperty(exports, "__esModule", {value: true}); function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }var _CJSImportProcessor = require('./CJSImportProcessor'); var _CJSImportProcessor2 = _interopRequireDefault(_CJSImportProcessor);
-var _computeSourceMap = require('./computeSourceMap'); var _computeSourceMap2 = _interopRequireDefault(_computeSourceMap);
-var _HelperManager = require('./HelperManager');
-var _identifyShadowedGlobals = require('./identifyShadowedGlobals'); var _identifyShadowedGlobals2 = _interopRequireDefault(_identifyShadowedGlobals);
-var _NameManager = require('./NameManager'); var _NameManager2 = _interopRequireDefault(_NameManager);
-var _Options = require('./Options');
+import CJSImportProcessor from "./CJSImportProcessor";
+import computeSourceMap, {} from "./computeSourceMap";
+import {HelperManager} from "./HelperManager";
+import identifyShadowedGlobals from "./identifyShadowedGlobals";
+import NameManager from "./NameManager";
+import {validateOptions} from "./Options";
 
-var _parser = require('./parser');
+import {parse} from "./parser";
 
-var _TokenProcessor = require('./TokenProcessor'); var _TokenProcessor2 = _interopRequireDefault(_TokenProcessor);
-var _RootTransformer = require('./transformers/RootTransformer'); var _RootTransformer2 = _interopRequireDefault(_RootTransformer);
-var _formatTokens = require('./util/formatTokens'); var _formatTokens2 = _interopRequireDefault(_formatTokens);
-var _getTSImportedNames = require('./util/getTSImportedNames'); var _getTSImportedNames2 = _interopRequireDefault(_getTSImportedNames);
+import TokenProcessor from "./TokenProcessor";
+import RootTransformer from "./transformers/RootTransformer";
+import formatTokens from "./util/formatTokens";
+import getTSImportedNames from "./util/getTSImportedNames";
 
 
 
@@ -27,16 +27,16 @@ var _getTSImportedNames = require('./util/getTSImportedNames'); var _getTSImport
 
 ;
 
- function getVersion() {
+export function getVersion() {
   /* istanbul ignore next */
   return "3.35.0";
-} exports.getVersion = getVersion;
+}
 
- function transform(code, options) {
-  _Options.validateOptions.call(void 0, options);
+export function transform(code, options) {
+  validateOptions(options);
   try {
     const sucraseContext = getSucraseContext(code, options);
-    const transformer = new (0, _RootTransformer2.default)(
+    const transformer = new RootTransformer(
       sucraseContext,
       options.transforms,
       Boolean(options.enableLegacyBabel5ModuleInterop),
@@ -50,7 +50,7 @@ var _getTSImportedNames = require('./util/getTSImportedNames'); var _getTSImport
       }
       result = {
         ...result,
-        sourceMap: _computeSourceMap2.default.call(void 0, 
+        sourceMap: computeSourceMap(
           transformerResult,
           options.filePath,
           options.sourceMapOptions,
@@ -67,16 +67,16 @@ var _getTSImportedNames = require('./util/getTSImportedNames'); var _getTSImport
     }
     throw e;
   }
-} exports.transform = transform;
+}
 
 /**
  * Return a string representation of the sucrase tokens, mostly useful for
  * diagnostic purposes.
  */
- function getFormattedTokens(code, options) {
+export function getFormattedTokens(code, options) {
   const tokens = getSucraseContext(code, options).tokenProcessor.tokens;
-  return _formatTokens2.default.call(void 0, code, tokens);
-} exports.getFormattedTokens = getFormattedTokens;
+  return formatTokens(code, tokens);
+}
 
 /**
  * Call into the parser/tokenizer and do some further preprocessing:
@@ -92,13 +92,13 @@ function getSucraseContext(code, options) {
   const isTypeScriptEnabled = options.transforms.includes("typescript");
   const isFlowEnabled = options.transforms.includes("flow");
   const disableESTransforms = options.disableESTransforms === true;
-  const file = _parser.parse.call(void 0, code, isJSXEnabled, isTypeScriptEnabled, isFlowEnabled);
+  const file = parse(code, isJSXEnabled, isTypeScriptEnabled, isFlowEnabled);
   const tokens = file.tokens;
   const scopes = file.scopes;
 
-  const nameManager = new (0, _NameManager2.default)(code, tokens);
-  const helperManager = new (0, _HelperManager.HelperManager)(nameManager);
-  const tokenProcessor = new (0, _TokenProcessor2.default)(
+  const nameManager = new NameManager(code, tokens);
+  const helperManager = new HelperManager(nameManager);
+  const tokenProcessor = new TokenProcessor(
     code,
     tokens,
     isFlowEnabled,
@@ -109,7 +109,7 @@ function getSucraseContext(code, options) {
 
   let importProcessor = null;
   if (options.transforms.includes("imports")) {
-    importProcessor = new (0, _CJSImportProcessor2.default)(
+    importProcessor = new CJSImportProcessor(
       nameManager,
       tokenProcessor,
       enableLegacyTypeScriptModuleInterop,
@@ -121,13 +121,13 @@ function getSucraseContext(code, options) {
     importProcessor.preprocessTokens();
     // We need to mark shadowed globals after processing imports so we know that the globals are,
     // but before type-only import pruning, since that relies on shadowing information.
-    _identifyShadowedGlobals2.default.call(void 0, tokenProcessor, scopes, importProcessor.getGlobalNames());
+    identifyShadowedGlobals(tokenProcessor, scopes, importProcessor.getGlobalNames());
     if (options.transforms.includes("typescript") && !options.keepUnusedImports) {
       importProcessor.pruneTypeOnlyImports();
     }
   } else if (options.transforms.includes("typescript") && !options.keepUnusedImports) {
     // Shadowed global detection is needed for TS implicit elision of imported names.
-    _identifyShadowedGlobals2.default.call(void 0, tokenProcessor, scopes, _getTSImportedNames2.default.call(void 0, tokenProcessor));
+    identifyShadowedGlobals(tokenProcessor, scopes, getTSImportedNames(tokenProcessor));
   }
   return {tokenProcessor, scopes, nameManager, importProcessor, helperManager};
 }
